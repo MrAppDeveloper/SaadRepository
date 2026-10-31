@@ -1,0 +1,12 @@
+agents:
+  qa:
+    provider: anthropic
+    model: claude-sonnet-5-5
+    tools: [list_tables, describe_schema, run_sql, load_file, run_pandas]
+    max_steps: 12
+  cleaner:
+    provider: anthropic  # switch to nebula once the API is verified
+    model: claude-sonnet-5-5
+    tools: [load_file, profile_data, run_pandas, write_output]
+    max_steps: 12
+    require_approval: [write_output]
