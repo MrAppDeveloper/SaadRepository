@@ -18,7 +18,11 @@ Claude Code is the development cockpit: it builds, runs, and debugs the CLI. The
 | Data sources (v1) | CSV / Excel, SQL (SQLite first, then Postgres/MySQL via SQLAlchemy) |
 | Agents (v1) | Ask-your-data Q&A, Data cleaning/ETL |
 | Model provider | Configurable per agent (YAML) |
-| Nebula access | **Unknown, still open.** Ship a Nebula adapter stub and fill it in once the API is confirmed |
+| Nebula access | **API not verified.** No endpoint is assumed. Ship a Nebula adapter stub that raises "not configured" until real docs/credentials are confirmed |
+| Agent runtime (initially) | Local Claude agents (Anthropic API), run by our own tool-use loop |
+| Nebula usage (later) | Call existing Nebula-hosted agents, once the API is verified |
+| Second SQL database | PostgreSQL (after SQLite) |
+| Outputs | Local files first. Database writes come later, behind explicit approval |
 
 ## Architecture
 
@@ -74,8 +78,8 @@ agents:
     tools: [list_tables, describe_schema, run_sql, load_file, run_pandas]
     max_steps: 12
   cleaner:
-    provider: nebula
-    model: <nebula-model-id>
+    provider: anthropic        # switch to nebula once the API is verified
+    model: claude-sonnet-5-5
     tools: [load_file, profile_data, run_pandas, write_output]
     require_approval: [write_output]
 ```
@@ -109,9 +113,14 @@ nebula-agent providers test nebula                                  # connectivi
 7. **Nebula integration**: implement the real adapter once the API is confirmed (see open questions).
 8. **Later**: MCP server over the same core, Postgres/MySQL, scheduled runs.
 
-## Open questions (needed before milestone 7)
+## Resolved
 
-1. **Nebula API**: Is there a public REST API for nebula.gg? What are the base URL and auth scheme? Is it OpenAI-compatible? (I found an npm package, `@thirdweb-dev/nebula`, with `getModels()`/`getAgents()` and secret-key auth. Is that the same product?)
-2. **Nebula usage mode**: Should we call raw **models** for reasoning, or invoke **Nebula-hosted agents** (with their Gmail/Slack/GitHub integrations) as tools?
-3. Which SQL database comes after SQLite: Postgres or MySQL?
-4. Where should outputs go: local files only, or written back to the database?
+- **Usage mode**: local Claude agents first; existing Nebula-hosted agents are integrated later.
+- **SQL**: SQLite first, then PostgreSQL.
+- **Outputs**: local files first. Database writes are added later and always require approval (`--apply` plus confirmation).
+
+## Still open (blocks milestone 7 only)
+
+1. **Nebula API**: not verified. Before building the adapter we need the official docs URL, base URL, auth scheme, and how hosted agents are listed and invoked. Until then no endpoint is assumed and the adapter stays a stub. (An unconfirmed lead: the npm package `@thirdweb-dev/nebula`, which may or may not be the same product.)
+
+Milestones 1-6 do not depend on this, so they can start immediately.
