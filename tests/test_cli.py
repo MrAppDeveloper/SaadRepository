@@ -16,7 +16,7 @@ def test_agents_lists_configured():
 
 
 def test_providers_includes_nebula():
-    assert "nebula" in runner.invoke(app, ["providers"]).stdout
+    assert "nebula" in runner.invoke(app, ["providers", "list"]).stdout
 
 
 def test_ask_placeholder_exits_nonzero():
