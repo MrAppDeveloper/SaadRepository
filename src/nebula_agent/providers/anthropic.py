@@ -4,12 +4,15 @@ import os
 from typing import Any
 
 from nebula_agent.providers.base import (
+    AUTH_STATUS_CODES,
     Message,
     NotConfiguredError,
+    ProviderAuthError,
     ProviderError,
     ProviderResponse,
     ToolCall,
     ToolSpec,
+    validate_tool_calls,
 )
 
 
@@ -37,7 +40,26 @@ def to_anthropic_messages(messages: list[Message]) -> list[dict[str, Any]]:
     return out
 
 
+def parse_response(resp: Any) -> ProviderResponse:
+    try:
+        texts: list[str] = []
+        calls: list[ToolCall] = []
+        for b in list(resp.content):
+            if b.type == "text":
+                texts.append(b.text)
+            elif b.type == "tool_use":
+                if not isinstance(b.input, dict):
+                    raise TypeError("tool input is not an object")
+                calls.append(ToolCall(id=b.id, name=b.name, arguments=dict(b.input)))
+        return ProviderResponse("".join(texts), calls, resp.stop_reason or "")
+    except (AttributeError, TypeError, ValueError) as e:
+        raise ProviderError(f"Malformed Anthropic response: {e}") from e
+
+
 class AnthropicProvider:
+    """Calls the Anthropic API with an API key. This is metered API billing,
+    separate from a Claude Code subscription."""
+
     name = "anthropic"
 
     def __init__(self, api_key: str | None = None, client: Any = None) -> None:
@@ -73,11 +95,12 @@ class AnthropicProvider:
         try:
             resp = self._client.messages.create(**kwargs)
         except Exception as e:  # SDK raises many distinct types; surface one
+            status = getattr(e, "status_code", None)
+            if status in AUTH_STATUS_CODES:
+                raise ProviderAuthError(
+                    f"Anthropic rejected the credentials (HTTP {status}). Check ANTHROPIC_API_KEY."
+                ) from e
             raise ProviderError(f"Anthropic request failed: {e}") from e
-        text = "".join(b.text for b in resp.content if b.type == "text")
-        calls = [
-            ToolCall(id=b.id, name=b.name, arguments=dict(b.input))
-            for b in resp.content
-            if b.type == "tool_use"
-        ]
-        return ProviderResponse(text=text, tool_calls=calls, stop_reason=resp.stop_reason or "")
+        parsed = parse_response(resp)
+        validate_tool_calls(parsed.tool_calls, tools)
+        return parsed

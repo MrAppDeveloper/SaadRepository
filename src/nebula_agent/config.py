@@ -4,13 +4,15 @@ from pathlib import Path
 
 import yaml
 from dotenv import load_dotenv
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 DEFAULT_CONFIG = Path("agents.yaml")
 KNOWN_PROVIDERS = ("anthropic", "nebula", "openai_compat")
 
 
 class AgentConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     provider: str
     model: str
     tools: list[str] = Field(default_factory=list)
@@ -19,6 +21,8 @@ class AgentConfig(BaseModel):
 
 
 class Config(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     agents: dict[str, AgentConfig]
 
 

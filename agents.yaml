@@ -1,3 +1,5 @@
+# Each agent uses exactly the provider named here; there is no automatic fallback.
+# anthropic/openai_compat must also be enabled via NEBULA_AGENT_ENABLE in .env.
 agents:
   qa:
     provider: anthropic

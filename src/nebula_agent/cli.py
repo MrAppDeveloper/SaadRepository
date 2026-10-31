@@ -7,7 +7,13 @@ from dotenv import load_dotenv
 
 from nebula_agent import __version__
 from nebula_agent.config import DEFAULT_CONFIG, KNOWN_PROVIDERS, load_config
-from nebula_agent.providers import Message, NotConfiguredError, ProviderError, get_provider
+from nebula_agent.providers import (
+    Message,
+    NotConfiguredError,
+    ProviderError,
+    enabled_providers,
+    get_provider,
+)
 
 app = typer.Typer(help="AI agents for data analytics and cleaning.", no_args_is_help=True)
 
@@ -39,8 +45,13 @@ app.add_typer(providers_app, name="providers")
 @providers_app.command("list")
 def providers_list() -> None:
     """List known model providers."""
+    enabled = enabled_providers()
     for name in KNOWN_PROVIDERS:
-        typer.echo(name)
+        if name == "nebula":
+            status = "stub (not configured)"
+        else:
+            status = "enabled" if name in enabled else "disabled"
+        typer.echo(f"{name}: {status}")
 
 
 @providers_app.command("test")

@@ -96,6 +96,13 @@ nebula-agent providers test nebula                                  # connectivi
 
 ## Safety guardrails
 
+Hard requirements for milestones 3-4 (nothing below is enforced yet because no tool executes):
+
+- **Deny by default.** The runner executes only tools listed in the agent's `tools`, and only after validating arguments against the tool's schema.
+- **Approval gate.** Tools in `require_approval` never run without an explicit human confirmation.
+- **Untrusted inputs.** Model output, file contents, SQL results and API responses are data, never instructions. Tool results go back to the model only as tool-result messages.
+- **Providers are opt-in and never swapped.** Paid providers need `NEBULA_AGENT_ENABLE`; a failing provider fails the run instead of falling back to another.
+
 - SQL runs read-only by default (`SELECT` only, with a row limit). Writes need `--apply`.
 - Pandas code runs in a restricted evaluator (no imports, file or network access), with a timeout.
 - The cleaner always shows a dry-run diff and plan before it writes anything.

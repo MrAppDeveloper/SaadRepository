@@ -7,12 +7,15 @@ from typing import Any
 import httpx
 
 from nebula_agent.providers.base import (
+    AUTH_STATUS_CODES,
     Message,
     NotConfiguredError,
+    ProviderAuthError,
     ProviderError,
     ProviderResponse,
     ToolCall,
     ToolSpec,
+    validate_tool_calls,
 )
 
 
@@ -41,6 +44,24 @@ def to_openai_messages(messages: list[Message], system: str | None) -> list[dict
         else:
             out.append({"role": m.role, "content": m.content})
     return out
+
+
+def parse_response(data: Any) -> ProviderResponse:
+    try:
+        choice = data["choices"][0]
+        msg = choice["message"]
+        content = msg.get("content") or ""
+        if not isinstance(content, str):
+            raise TypeError("content is not a string")
+        calls = []
+        for c in msg.get("tool_calls") or []:
+            args = json.loads(c["function"]["arguments"] or "{}")
+            if not isinstance(args, dict):
+                raise TypeError("tool arguments are not an object")
+            calls.append(ToolCall(id=c["id"], name=c["function"]["name"], arguments=args))
+        return ProviderResponse(content, calls, choice.get("finish_reason") or "")
+    except (KeyError, IndexError, TypeError, AttributeError, ValueError) as e:
+        raise ProviderError(f"Malformed response: {e}") from e
 
 
 class OpenAICompatProvider:
@@ -90,23 +111,18 @@ class OpenAICompatProvider:
             url = f"{self.base_url}/chat/completions"
             r = self._client.post(url, json=payload, headers=headers)
             r.raise_for_status()
-            choice = r.json()["choices"][0]
-        except (httpx.HTTPError, KeyError, IndexError, ValueError) as e:
+            data = r.json()
+        except httpx.HTTPStatusError as e:
+            status = e.response.status_code
+            if status in AUTH_STATUS_CODES:
+                raise ProviderAuthError(
+                    f"Server rejected the credentials (HTTP {status}). Check OPENAI_COMPAT_API_KEY."
+                ) from e
+            raise ProviderError(f"OpenAI-compatible request failed: HTTP {status}") from e
+        except httpx.HTTPError as e:
             raise ProviderError(f"OpenAI-compatible request failed: {e}") from e
-        msg = choice["message"]
-        try:
-            calls = [
-                ToolCall(
-                    id=c["id"],
-                    name=c["function"]["name"],
-                    arguments=json.loads(c["function"]["arguments"] or "{}"),
-                )
-                for c in msg.get("tool_calls") or []
-            ]
-        except (KeyError, ValueError) as e:
-            raise ProviderError(f"Malformed tool call in response: {e}") from e
-        return ProviderResponse(
-            text=msg.get("content") or "",
-            tool_calls=calls,
-            stop_reason=choice.get("finish_reason") or "",
-        )
+        except ValueError as e:
+            raise ProviderError("OpenAI-compatible response was not valid JSON.") from e
+        parsed = parse_response(data)
+        validate_tool_calls(parsed.tool_calls, tools)
+        return parsed
