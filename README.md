@@ -13,9 +13,12 @@ pytest && ruff check .
 ## Status
 
 "Mock-tested" means automated tests with fake clients; the test suite blocks all network access
-and strips credentials, so it cannot reach a paid API. **Nothing has been tested against a real
-provider.** The only real commands run so far were `claude --version`, `claude --help` and
-`claude auth status` (local, no model request) while designing `claude_cli`.
+and strips credentials, so it cannot reach a paid API. The only real-provider test so far is **one** `claude_cli` request (`providers test claude_cli -m haiku`,
+reply "OK") plus the `claude auth status` preflight, run in a cloud container whose login reported
+`authMethod: oauth_token`, `apiProvider: firstParty`. That shows the command works end to end. It does
+**not** prove how the request was billed: the CLI reports no plan type and nothing here can read your
+usage dashboard, so check your Claude usage page to confirm it counted against subscription limits.
+The Anthropic API and OpenAI-compatible adapters have never been run against a real server.
 
 | Area | Implemented | Mock-tested | Tested against a real provider |
 |---|---|---|---|
@@ -27,8 +30,9 @@ provider.** The only real commands run so far were `claude --version`, `claude -
 | Opt-in gating for paid providers | yes | yes | n/a |
 | No automatic fallback between providers | yes (nothing falls back) | yes | n/a |
 | Rejecting tool calls the model was not offered | yes | yes | no |
-| `claude_cli` provider (`claude -p`, text-only): request, scrubbed env, tools disabled | yes | yes | **no** (awaiting approval) |
-| `claude_cli` preflight: login + eligibility check, limit / auth / timeout / malformed-output handling | yes | yes | **no** (awaiting approval) |
+| `claude_cli` provider (`claude -p`, text-only): request, scrubbed env, tools disabled | yes | yes | **yes, once** (see below) |
+| `claude_cli` preflight (login + eligibility check) | yes | yes | **yes, once** (passed) |
+| `claude_cli` limit / auth-failure / timeout / malformed-output handling | yes | yes | no (not triggered) |
 | Nebula adapter | **stub only** (always "not configured") | yes | no, API not verified |
 | `ask`, `clean` commands | placeholders | exit code only | no |
 | Data tools (files, SQL, pandas), agent runner, **tool execution** | **not built** | n/a | n/a |
