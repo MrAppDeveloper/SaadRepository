@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from pydantic import BaseModel, ConfigDict, Field
 
 DEFAULT_CONFIG = Path("agents.yaml")
-KNOWN_PROVIDERS = ("anthropic", "nebula", "openai_compat")
+KNOWN_PROVIDERS = ("anthropic", "claude_cli", "nebula", "openai_compat")
 
 
 class AgentConfig(BaseModel):

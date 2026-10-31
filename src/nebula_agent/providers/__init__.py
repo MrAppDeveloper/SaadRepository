@@ -9,13 +9,14 @@ from nebula_agent.providers.base import (
     ProviderAuthError,
     ProviderDisabledError,
     ProviderError,
+    ProviderLimitError,
     ProviderResponse,
     ToolCall,
     ToolSpec,
 )
 
 ENABLE_ENV = "NEBULA_AGENT_ENABLE"
-OPT_IN_PROVIDERS = ("anthropic", "openai_compat")
+OPT_IN_PROVIDERS = ("anthropic", "openai_compat", "claude_cli")
 
 
 def enabled_providers() -> set[str]:
@@ -35,12 +36,16 @@ def get_provider(name: str) -> Provider:
     if name not in enabled_providers():
         raise ProviderDisabledError(
             f"Provider '{name}' is disabled. Set {ENABLE_ENV}={name} in .env to enable it; "
-            "this can incur charges with that provider."
+            "this can use your quota or incur charges with that provider."
         )
     if name == "anthropic":
         from nebula_agent.providers.anthropic import AnthropicProvider
 
         return AnthropicProvider()
+    if name == "claude_cli":
+        from nebula_agent.providers.claude_cli import ClaudeCliProvider
+
+        return ClaudeCliProvider()
     from nebula_agent.providers.openai_compat import OpenAICompatProvider
 
     return OpenAICompatProvider()
@@ -53,6 +58,7 @@ __all__ = [
     "ProviderAuthError",
     "ProviderDisabledError",
     "ProviderError",
+    "ProviderLimitError",
     "ProviderResponse",
     "ToolCall",
     "ToolSpec",

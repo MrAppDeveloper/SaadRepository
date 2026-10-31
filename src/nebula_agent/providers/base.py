@@ -20,6 +20,10 @@ class ProviderAuthError(ProviderError):
     """The provider rejected our credentials (HTTP 401/403)."""
 
 
+class ProviderLimitError(ProviderError):
+    """The provider refused because a usage / rate limit was reached. Never retried elsewhere."""
+
+
 AUTH_STATUS_CODES = (401, 403)
 
 

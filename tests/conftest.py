@@ -25,3 +25,13 @@ def isolated(monkeypatch):
         raise RuntimeError("network access is blocked in tests")
 
     monkeypatch.setattr(socket.socket, "connect", blocked)
+
+
+@pytest.fixture(autouse=True)
+def no_real_subprocess(monkeypatch):
+    """Tests must never launch the real `claude` CLI; they inject a fake runner instead."""
+
+    def blocked(*a, **k):
+        raise RuntimeError("subprocess is blocked in tests; inject a fake runner")
+
+    monkeypatch.setattr("nebula_agent.providers.claude_cli.subprocess.run", blocked)
